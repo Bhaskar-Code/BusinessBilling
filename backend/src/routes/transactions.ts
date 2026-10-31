@@ -110,13 +110,18 @@ router.get('/:id', (req: Request, res: Response) => {
 // POST /api/transactions
 router.post('/', (req: Request, res: Response) => {
   try {
-    const {
-      type, date, party_id, party_name,
+    let {
+      type, date: rawDate, invoice_date, party_id, party_name,
       items: lineItems = [],
       discount_amount = 0, round_off = 0,
-      paid_amount = 0, payment_method = 'cash',
+      paid_amount, amount_paid, payment_method = 'cash',
       notes, status = 'pending', is_gst = 1, supply_state,
     } = req.body;
+
+    if (type === 'sale_invoice') type = 'sale';
+    if (type === 'purchase_invoice') type = 'purchase';
+
+    const date = rawDate || invoice_date || new Date().toISOString().split('T')[0];
 
     if (!type || !date) {
       res.status(400).json({ success: false, error: 'type and date are required' });
@@ -138,9 +143,10 @@ router.post('/', (req: Request, res: Response) => {
     const processedItems: ProcessedItem[] = [];
 
     for (const item of lineItems as TransactionItemInput[]) {
+      const itemPrice = Number(item.price ?? (item as any).unit_price ?? 0);
       const gstCalc = calculateLineItemGST({
-        price: Number(item.price),
-        quantity: Number(item.quantity),
+        price: itemPrice,
+        quantity: Number(item.quantity ?? 1),
         discountPct: item.discount_pct != null ? Number(item.discount_pct) : 0,
         discountAmt: item.discount_amt != null ? Number(item.discount_amt) : undefined,
         taxRate: Number(item.tax_rate ?? 18),
@@ -153,6 +159,7 @@ router.post('/', (req: Request, res: Response) => {
       totalTax = r(totalTax + gstCalc.taxAmount);
       processedItems.push({
         ...item,
+        price: itemPrice,
         cgst_rate: gstCalc.cgstRate,
         sgst_rate: gstCalc.sgstRate,
         igst_rate: gstCalc.igstRate,
@@ -165,7 +172,7 @@ router.post('/', (req: Request, res: Response) => {
     const discountAmt = r(Number(discount_amount));
     const roundOff = r(Number(round_off));
     const total = r(subtotal + totalTax - discountAmt + roundOff);
-    const paidAmt = r(Number(paid_amount));
+    const paidAmt = r(Number(paid_amount ?? amount_paid ?? 0));
     const balanceDue = r(total - paidAmt);
     const txStatus = paidAmt >= total ? 'paid' : (paidAmt > 0 ? 'partial' : status);
 
@@ -330,10 +337,12 @@ router.put('/:id', (req: Request, res: Response) => {
     execRun(`DELETE FROM stock_movements WHERE transaction_id = :id`, { ':id': id });
 
     const {
-      date, party_id, party_name, items: lineItems = [],
-      discount_amount = 0, round_off = 0, paid_amount,
+      date: rawDate, invoice_date, party_id, party_name, items: lineItems = [],
+      discount_amount = 0, round_off = 0, paid_amount, amount_paid,
       payment_method, notes, is_gst = 1, supply_state,
     } = req.body;
+
+    const date = rawDate || invoice_date || tx.date;
 
     const bizRows = execQuery(`SELECT state_code FROM business_settings LIMIT 1`);
     const bizStateCode = String(bizRows[0]?.state_code ?? '27');
@@ -351,9 +360,10 @@ router.put('/:id', (req: Request, res: Response) => {
     const processedItems: ProcessedItem[] = [];
 
     for (const item of lineItems as TransactionItemInput[]) {
+      const itemPrice = Number(item.price ?? (item as any).unit_price ?? 0);
       const gstCalc = calculateLineItemGST({
-        price: Number(item.price),
-        quantity: Number(item.quantity),
+        price: itemPrice,
+        quantity: Number(item.quantity ?? 1),
         discountPct: item.discount_pct != null ? Number(item.discount_pct) : 0,
         discountAmt: item.discount_amt != null ? Number(item.discount_amt) : undefined,
         taxRate: Number(item.tax_rate ?? 18),
@@ -366,6 +376,7 @@ router.put('/:id', (req: Request, res: Response) => {
       totalTax = r(totalTax + gstCalc.taxAmount);
       processedItems.push({
         ...item,
+        price: itemPrice,
         cgst_rate: gstCalc.cgstRate, sgst_rate: gstCalc.sgstRate,
         igst_rate: gstCalc.igstRate, tax_amount: gstCalc.taxAmount,
         discount_amt: gstCalc.discountAmt, total: gstCalc.lineTotal,
@@ -377,7 +388,8 @@ router.put('/:id', (req: Request, res: Response) => {
     const total = r(subtotal + totalTax - discountAmt + roundOff);
 
     const payRows = execQuery(`SELECT COALESCE(SUM(amount), 0) as total_paid FROM payments WHERE transaction_id = :id`, { ':id': id });
-    const totalPaid = paid_amount != null ? r(Number(paid_amount)) : r(Number(payRows[0]?.total_paid ?? 0));
+    const paidInput = paid_amount ?? amount_paid;
+    const totalPaid = paidInput != null ? r(Number(paidInput)) : r(Number(payRows[0]?.total_paid ?? 0));
     const balanceDue = r(total - totalPaid);
     const txStatus = totalPaid >= total ? 'paid' : (totalPaid > 0 ? 'partial' : 'pending');
 

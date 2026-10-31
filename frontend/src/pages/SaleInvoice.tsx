@@ -215,13 +215,23 @@ export const SaleInvoice: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: async (draft: boolean) => {
+      const validLines = lines.filter((l) => l.item_name && l.item_name.trim());
+      if (validLines.length === 0) {
+        throw new Error('Please select or enter at least one service/item');
+      }
+
+      const selectedCustomer = parties.find((p) => p.id === partyId);
+
       const payload = {
         type: 'sale',
+        number: invoiceNumber,
         invoice_number: invoiceNumber,
+        date: invoiceDate,
         invoice_date: invoiceDate,
         due_date: dueDate,
-        party_id: partyId,
-        is_gst: isGst,
+        party_id: partyId || null,
+        party_name: selectedCustomer?.name || 'Walk-in Customer',
+        is_gst: isGst ? 1 : 0,
         is_interstate: isInterstate,
         subtotal,
         discount_amount: totalDiscount,
@@ -232,18 +242,23 @@ export const SaleInvoice: React.FC = () => {
         total_tax: totalTax,
         round_off: roundOff,
         grand_total: grandTotal,
+        total: grandTotal,
         amount_paid: amountPaid,
+        paid_amount: amountPaid,
+        payment_method: paymentMethod,
         balance_due: balanceDue,
         status: draft ? 'draft' : amountPaid >= grandTotal ? 'paid' : amountPaid > 0 ? 'partial' : 'pending',
         notes,
-        items: lines.map((l) => ({
+        items: validLines.map((l) => ({
           item_id: l.item_id,
           item_name: l.item_name,
           quantity: l.quantity,
           unit: l.unit,
           price: l.price,
-          discount_percent: l.discount_percent,
-          discount_amount: l.discount_amount,
+          discount_pct: l.discount_percent || 0,
+          discount_percent: l.discount_percent || 0,
+          discount_amt: l.discount_amount || 0,
+          discount_amount: l.discount_amount || 0,
           tax_rate: l.tax_rate,
           cgst_amount: l.cgst_amount,
           sgst_amount: l.sgst_amount,
@@ -366,7 +381,7 @@ export const SaleInvoice: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-gray-700">Customer *</label>
+              <label className="text-sm font-medium text-gray-700">Customer (or Walk-in)</label>
               <button
                 type="button"
                 onClick={() => setShowQuickCustomer(true)}
