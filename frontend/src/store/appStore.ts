@@ -24,8 +24,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchSettings: async () => {
     set({ isLoading: true });
     try {
-      const response = await api.get<BusinessSettings>('/api/settings');
-      set({ businessSettings: response.data, isLoading: false });
+      const response = await api.get<any>('/api/settings');
+      const s = response.data;
+      if (s) {
+        set({
+          businessSettings: {
+            ...s,
+            business_name: s.business_name || s.name || 'My Business',
+            state_code: s.state_code || '27',
+          },
+          isLoading: false,
+        });
+      } else {
+        set({
+          businessSettings: {
+            business_name: 'My Business',
+            state_code: '27',
+          },
+          isLoading: false,
+        });
+      }
     } catch {
       // Use defaults if no settings
       set({

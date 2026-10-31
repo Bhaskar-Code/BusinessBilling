@@ -67,15 +67,15 @@ export const Inventory: React.FC = () => {
     queryKey: ['items'],
     queryFn: async () => {
       const res = await api.get<Item[]>('/api/items');
-      return res.data;
+      return Array.isArray(res.data) ? res.data : [];
     },
   });
 
   const { data: categories = [] } = useQuery<ItemCategory[]>({
     queryKey: ['categories'],
     queryFn: async () => {
-      const res = await api.get<ItemCategory[]>('/api/categories');
-      return res.data;
+      const res = await api.get<ItemCategory[]>('/api/items/categories');
+      return Array.isArray(res.data) ? res.data : [];
     },
   });
 

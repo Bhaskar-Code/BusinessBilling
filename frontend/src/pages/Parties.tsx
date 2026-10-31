@@ -82,7 +82,7 @@ export const Parties: React.FC = () => {
     queryKey: ['parties', tab],
     queryFn: async () => {
       const res = await api.get<Party[]>(`/api/parties?type=${tab}`);
-      return res.data;
+      return Array.isArray(res.data) ? res.data : [];
     },
   });
 

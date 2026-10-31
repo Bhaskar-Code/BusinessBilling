@@ -211,8 +211,15 @@ export const Dashboard: React.FC = () => {
     queryKey: ['dashboard'],
     queryFn: async () => {
       try {
-        const response = await api.get<DashboardData>('/api/reports/dashboard');
-        return response.data;
+        const response = await api.get('/api/reports/dashboard');
+        const d = response.data?.data || response.data || {};
+        return {
+          ...MOCK_DASHBOARD,
+          ...d,
+          sales_vs_purchase: Array.isArray(d.sales_vs_purchase) && d.sales_vs_purchase.length ? d.sales_vs_purchase : MOCK_DASHBOARD.sales_vs_purchase,
+          expense_by_category: Array.isArray(d.expense_by_category) && d.expense_by_category.length ? d.expense_by_category : MOCK_DASHBOARD.expense_by_category,
+          recent_transactions: Array.isArray(d.recent_transactions) && d.recent_transactions.length ? d.recent_transactions : MOCK_DASHBOARD.recent_transactions,
+        };
       } catch {
         return MOCK_DASHBOARD;
       }
@@ -222,7 +229,7 @@ export const Dashboard: React.FC = () => {
 
   const dashboard = data || MOCK_DASHBOARD;
 
-  const chartData = dashboard.sales_vs_purchase.map((d) => ({
+  const chartData = (dashboard.sales_vs_purchase || MOCK_DASHBOARD.sales_vs_purchase).map((d) => ({
     ...d,
     date: format(new Date(d.date), 'dd MMM'),
   }));
@@ -310,7 +317,7 @@ export const Dashboard: React.FC = () => {
                   outerRadius={75}
                   innerRadius={40}
                 >
-                  {dashboard.expense_by_category.map((_, i) => (
+                  {(dashboard.expense_by_category || MOCK_DASHBOARD.expense_by_category).map((_, i) => (
                     <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                   ))}
                 </Pie>
@@ -366,7 +373,7 @@ export const Dashboard: React.FC = () => {
                         ))}
                       </tr>
                     ))
-                  : dashboard.recent_transactions.map((tx) => (
+                  : (dashboard.recent_transactions || []).map((tx) => (
                       <tr
                         key={tx.id}
                         className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"

@@ -77,7 +77,7 @@ export const SaleInvoice: React.FC = () => {
     queryKey: ['parties-all'],
     queryFn: async () => {
       const res = await api.get<Party[]>('/api/parties');
-      return res.data;
+      return Array.isArray(res.data) ? res.data : [];
     },
   });
 
@@ -85,7 +85,7 @@ export const SaleInvoice: React.FC = () => {
     queryKey: ['items'],
     queryFn: async () => {
       const res = await api.get<Item[]>('/api/items');
-      return res.data;
+      return Array.isArray(res.data) ? res.data : [];
     },
   });
 

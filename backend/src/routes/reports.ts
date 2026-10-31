@@ -88,10 +88,34 @@ router.get('/dashboard', (_req: Request, res: Response) => {
 
     // Recent transactions (last 10)
     const recentTx = execQuery(`
-      SELECT id, type, number, date, party_name, total, status
+      SELECT id, type, number as invoice_number, date as invoice_date, party_name, total as grand_total, status
       FROM transactions
       ORDER BY created_at DESC
       LIMIT 10
+    `);
+
+    // Last 7 days sales vs purchase
+    const last7Days: { date: string; sales: number; purchases: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toISOString().split('T')[0];
+      const s = execQuery(`SELECT COALESCE(SUM(total), 0) as total FROM transactions WHERE type = 'sale' AND date = :day AND status != 'cancelled'`, { ':day': dayStr });
+      const p = execQuery(`SELECT COALESCE(SUM(total), 0) as total FROM transactions WHERE type = 'purchase' AND date = :day AND status != 'cancelled'`, { ':day': dayStr });
+      last7Days.push({
+        date: dayStr,
+        sales: r(Number(s[0]?.total ?? 0)),
+        purchases: r(Number(p[0]?.total ?? 0)),
+      });
+    }
+
+    // Expense by category
+    const expenseByCatRows = execQuery(`
+      SELECT category, COALESCE(SUM(amount), 0) as amount
+      FROM expenses
+      GROUP BY category
+      ORDER BY amount DESC
+      LIMIT 6
     `);
 
     res.json({
@@ -109,6 +133,8 @@ router.get('/dashboard', (_req: Request, res: Response) => {
         total_customers: (partiesRows[0]?.total_customers as number) ?? 0,
         total_suppliers: (partiesRows[0]?.total_suppliers as number) ?? 0,
         total_items: (itemsRows[0]?.total_items as number) ?? 0,
+        sales_vs_purchase: last7Days,
+        expense_by_category: expenseByCatRows,
         recent_transactions: recentTx,
       }
     });
