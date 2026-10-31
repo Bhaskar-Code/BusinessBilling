@@ -204,6 +204,12 @@ VALUES ('item_7', 'Candid Birthday / Anniversary Shoot', 'EVENT-BIRTHDAY', 'cat_
 
 INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
 VALUES ('item_8', 'Canvera HD Glossy Album (30 Pages)', 'ALBUM-30P', 'cat_3', 'Pcs', 1800, 4500, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_9', 'Maternity Shoot', 'MATERNITY', 'cat_2', 'Session', 0, 3500, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_10', 'Others / Custom Service', 'OTHERS', 'cat_1', 'Pcs', 0, 0, 18, 999);
 `;
 
 export async function initDb(): Promise<void> {
