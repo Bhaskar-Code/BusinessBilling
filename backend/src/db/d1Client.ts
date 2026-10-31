@@ -44,14 +44,38 @@ export async function queryD1(sql: string, params: any[] = []): Promise<any[]> {
     }),
   });
 
-  const json = await response.json() as any;
+  const json = (await response.json()) as any;
 
   if (!json.success) {
-    const errorMsg = json.errors?.map((e: any) => e.message).join(', ') || 'Failed to query Cloudflare D1';
+    const errorMsg =
+      json.errors?.map((e: any) => e.message).join(', ') || 'Failed to query Cloudflare D1';
     throw new Error(`Cloudflare D1 Error: ${errorMsg}`);
   }
 
-  // Cloudflare D1 returns array of result objects
   const firstResult = json.result?.[0];
   return firstResult?.results || [];
+}
+
+export async function testD1Connection(): Promise<{
+  connected: boolean;
+  tableCount?: number;
+  durationMs?: number;
+  error?: string;
+}> {
+  try {
+    const start = Date.now();
+    const tables = await queryD1(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_cf_%'"
+    );
+    return {
+      connected: true,
+      tableCount: tables.length,
+      durationMs: Date.now() - start,
+    };
+  } catch (err: any) {
+    return {
+      connected: false,
+      error: err.message,
+    };
+  }
 }

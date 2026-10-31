@@ -11,6 +11,7 @@ import paymentsRouter from './routes/payments';
 import expensesRouter from './routes/expenses';
 import reportsRouter from './routes/reports';
 import settingsRouter from './routes/settings';
+import { testD1Connection, isD1Configured, getD1Config } from './db/d1Client';
 
 dotenv.config();
 
@@ -29,6 +30,38 @@ app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ success: true, message: 'Vyapaar API is running', timestamp: new Date().toISOString() });
+});
+
+// Cloudflare D1 Status
+app.get('/api/d1/status', async (_req: Request, res: Response) => {
+  const configured = isD1Configured();
+  if (!configured) {
+    res.json({
+      success: true,
+      data: {
+        configured: false,
+        status: 'Local SQLite fallback',
+        message: 'Cloudflare D1 credentials not set in .env',
+      },
+    });
+    return;
+  }
+
+  const d1Test = await testD1Connection();
+  const config = getD1Config();
+
+  res.json({
+    success: true,
+    data: {
+      configured: true,
+      connected: d1Test.connected,
+      account_id: config?.accountId,
+      database_id: config?.databaseId,
+      table_count: d1Test.tableCount,
+      latency_ms: d1Test.durationMs,
+      error: d1Test.error,
+    },
+  });
 });
 
 // Routes
