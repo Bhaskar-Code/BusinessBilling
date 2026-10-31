@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { initDb } from './db/database';
 
 import partiesRouter from './routes/parties';
@@ -39,8 +40,20 @@ app.use('/api/expenses', expensesRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/settings', settingsRouter);
 
+// Serve frontend static build
+const frontendDist = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDist));
+
+// SPA fallback for non-API routes
+app.get('*', (req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
 // 404 handler
-app.use((_req: Request, res: Response) => {
+app.use('/api/*', (_req: Request, res: Response) => {
   res.status(404).json({ success: false, error: 'Route not found' });
 });
 
