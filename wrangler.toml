@@ -1,0 +1,10 @@
+name = "business-billing"
+main = "backend/dist/index.js"
+compatibility_date = "2024-01-01"
+
+# Cloudflare D1 Free Database Configuration
+[[d1_databases]]
+binding = "DB"
+database_name = "vyapaar-db"
+database_id = "your-d1-database-id-here" # Generated via `npx wrangler d1 create vyapaar-db`
+migrations_dir = "backend/migrations"

@@ -6,6 +6,9 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "d1:create": "npx wrangler d1 create vyapaar-db",
+    "d1:migrate": "npx wrangler d1 execute vyapaar-db --remote --file=migrations/0001_initial_schema.sql",
+    "d1:migrate:local": "npx wrangler d1 execute vyapaar-db --local --file=migrations/0001_initial_schema.sql",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
