@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Printer, Save } from 'lucide-react';
+import { Plus, Trash2, Printer, Save, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import api from '../lib/axios';
 import type { Party, Item, TransactionItem, Transaction } from '../types';
@@ -10,6 +10,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { SearchableSelect } from '../components/ui/SearchableSelect';
 import { Card } from '../components/ui/Card';
+import { Modal } from '../components/ui/Modal';
 import { useAppStore } from '../store/appStore';
 
 interface LineItem extends Partial<TransactionItem> {
@@ -72,6 +73,29 @@ export const SaleInvoice: React.FC = () => {
   const [amountPaid, setAmountPaid] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [paymentRef, setPaymentRef] = useState('');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [showQuickCustomer, setShowQuickCustomer] = useState(false);
+  const [quickCustName, setQuickCustName] = useState('');
+  const [quickCustPhone, setQuickCustPhone] = useState('');
+  const [savedReceiptData, setSavedReceiptData] = useState<any>(null);
+
+  const quickCustomerMutation = useMutation({
+    mutationFn: (data: { name: string; phone: string }) =>
+      api.post('/api/parties', { ...data, type: 'customer', opening_balance: 0 }),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['parties-all'] });
+      queryClient.invalidateQueries({ queryKey: ['parties'] });
+      const party = res.data;
+      if (party?.id) {
+        setPartyId(party.id);
+      }
+      setShowQuickCustomer(false);
+      setQuickCustName('');
+      setQuickCustPhone('');
+      addToast('success', 'Customer added & selected');
+    },
+    onError: (err: any) => addToast('error', err.message),
+  });
 
   const { data: parties = [] } = useQuery<Party[]>({
     queryKey: ['parties-all'],
@@ -235,10 +259,35 @@ export const SaleInvoice: React.FC = () => {
       }
       return api.post('/api/transactions', payload);
     },
-    onSuccess: (_, draft) => {
+    onSuccess: (res: any, draft) => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      addToast('success', draft ? 'Invoice saved as draft' : 'Invoice saved successfully');
-      if (!draft) navigate('/transactions?type=sale');
+      queryClient.invalidateQueries({ queryKey: ['parties'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      addToast('success', draft ? 'Invoice saved as draft' : 'Invoice & Receipt generated successfully');
+      if (draft) {
+        navigate('/transactions?type=sale');
+      } else {
+        const selectedParty = parties.find((p) => p.id === partyId);
+        setSavedReceiptData({
+          invoiceNumber: invoiceNumber || res.data?.number || 'INV-0001',
+          invoiceDate,
+          customerName: selectedParty?.name || 'Walk-in Customer',
+          customerPhone: selectedParty?.phone || '',
+          lines,
+          subtotal,
+          totalDiscount,
+          taxableAmount,
+          totalCgst,
+          totalSgst,
+          totalIgst,
+          grandTotal,
+          amountPaid,
+          balanceDue,
+          paymentMethod,
+          isGst,
+        });
+        setShowReceipt(true);
+      }
     },
     onError: (err: Error) => addToast('error', err.message),
   });
@@ -315,14 +364,25 @@ export const SaleInvoice: React.FC = () => {
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <SearchableSelect
-            label="Customer"
-            options={partyOptions}
-            value={partyId}
-            onChange={(v) => setPartyId(v as number | null)}
-            placeholder="Search and select customer..."
-            required
-          />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">Customer *</label>
+              <button
+                type="button"
+                onClick={() => setShowQuickCustomer(true)}
+                className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+              >
+                <UserPlus size={13} /> + Quick Add Customer
+              </button>
+            </div>
+            <SearchableSelect
+              options={partyOptions}
+              value={partyId}
+              onChange={(v) => setPartyId(v as number | null)}
+              placeholder="Search and select customer..."
+              required
+            />
+          </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700">GST Settings</label>
             <div className="flex items-center gap-4 mt-1.5">
@@ -588,11 +648,190 @@ export const SaleInvoice: React.FC = () => {
               onClick={() => saveMutation.mutate(false)}
               loading={saveMutation.isPending}
             >
-              Save & Print
+              Save & Print Bill
             </Button>
           </div>
         </Card>
       </div>
+
+      {/* Quick Add Customer Modal */}
+      <Modal
+        isOpen={showQuickCustomer}
+        onClose={() => setShowQuickCustomer(false)}
+        title="Quick Add Customer"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!quickCustName.trim()) return;
+            quickCustomerMutation.mutate({ name: quickCustName.trim(), phone: quickCustPhone.trim() });
+          }}
+          className="space-y-4"
+        >
+          <Input
+            label="Customer Name *"
+            required
+            placeholder="e.g. Rahul Sharma"
+            value={quickCustName}
+            onChange={(e) => setQuickCustName(e.target.value)}
+          />
+          <Input
+            label="Mobile Number"
+            type="tel"
+            placeholder="e.g. 9876543210"
+            value={quickCustPhone}
+            onChange={(e) => setQuickCustPhone(e.target.value)}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" type="button" onClick={() => setShowQuickCustomer(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={quickCustomerMutation.isPending}>
+              Add & Select Customer
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Studio Printable Receipt / Tax Invoice Modal */}
+      {showReceipt && savedReceiptData && (
+        <Modal
+          isOpen={showReceipt}
+          onClose={() => setShowReceipt(false)}
+          title="Studio Bill & Payment Receipt"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div id="printable-receipt" className="p-6 bg-white border border-gray-200 rounded-xl space-y-4 text-gray-800 font-sans">
+              {/* Studio Header */}
+              <div className="text-center border-b border-gray-200 pb-3">
+                <h3 className="text-2xl font-black text-gray-900 tracking-wide uppercase">
+                  {businessSettings?.business_name || 'ROYAL PHOTO STUDIO'}
+                </h3>
+                <p className="text-xs text-gray-600 mt-1">
+                  {businessSettings?.address || 'Shop No. 5, Near City Plaza, Main Road'} {businessSettings?.phone ? `• Tel: ${businessSettings.phone}` : ''}
+                </p>
+                {businessSettings?.gstin && (
+                  <p className="text-xs font-mono font-medium text-gray-700 mt-0.5">GSTIN: {businessSettings.gstin}</p>
+                )}
+                <div className="inline-block mt-2 px-3 py-0.5 bg-gray-100 rounded text-xs font-bold uppercase tracking-wider text-gray-700">
+                  {savedReceiptData.isGst ? 'Tax Invoice / Payment Receipt' : 'Studio Cash Receipt'}
+                </div>
+              </div>
+
+              {/* Invoice & Customer Meta */}
+              <div className="flex justify-between items-start text-xs border-b border-gray-200 pb-3">
+                <div>
+                  <p className="text-gray-500 font-semibold uppercase text-[10px]">Customer Details</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">{savedReceiptData.customerName}</p>
+                  {savedReceiptData.customerPhone && (
+                    <p className="text-gray-600 font-medium">Mob: {savedReceiptData.customerPhone}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p><span className="text-gray-500">Receipt No:</span> <span className="font-mono font-bold text-gray-900">{savedReceiptData.invoiceNumber}</span></p>
+                  <p><span className="text-gray-500">Date:</span> <span className="font-medium text-gray-800">{savedReceiptData.invoiceDate}</span></p>
+                  <p><span className="text-gray-500">Mode:</span> <span className="uppercase font-semibold text-blue-600">{savedReceiptData.paymentMethod}</span></p>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="py-2 px-2 text-gray-600">#</th>
+                    <th className="py-2 px-2 text-gray-600">Service / Description</th>
+                    <th className="py-2 px-2 text-right text-gray-600">Qty</th>
+                    <th className="py-2 px-2 text-right text-gray-600">Rate</th>
+                    {savedReceiptData.isGst && <th className="py-2 px-2 text-right text-gray-600">GST</th>}
+                    <th className="py-2 px-2 text-right text-gray-600">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {savedReceiptData.lines.map((l: any, idx: number) => (
+                    <tr key={idx}>
+                      <td className="py-2 px-2 text-gray-500">{idx + 1}</td>
+                      <td className="py-2 px-2 font-medium text-gray-900">{l.item_name}</td>
+                      <td className="py-2 px-2 text-right text-gray-700">{l.quantity}</td>
+                      <td className="py-2 px-2 text-right text-gray-700">₹{Number(l.price).toFixed(2)}</td>
+                      {savedReceiptData.isGst && (
+                        <td className="py-2 px-2 text-right text-gray-500">{l.tax_rate}%</td>
+                      )}
+                      <td className="py-2 px-2 text-right font-semibold text-gray-900">₹{Number(l.amount).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals & Tax Summary */}
+              <div className="border-t border-gray-200 pt-3 space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-medium text-gray-900">₹{savedReceiptData.subtotal.toFixed(2)}</span>
+                </div>
+                {savedReceiptData.isGst && (
+                  <>
+                    <div className="flex justify-between text-gray-600">
+                      <span>CGST (9%):</span>
+                      <span>₹{savedReceiptData.totalCgst.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>SGST (9%):</span>
+                      <span>₹{savedReceiptData.totalSgst.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-1.5 text-gray-900">
+                  <span>Grand Total:</span>
+                  <span className="text-blue-600 font-extrabold text-base">₹{savedReceiptData.grandTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-green-700 font-semibold">
+                  <span>Amount Paid:</span>
+                  <span>₹{savedReceiptData.amountPaid.toFixed(2)}</span>
+                </div>
+                <div className={`flex justify-between text-sm font-bold p-2.5 rounded-lg border ${
+                  savedReceiptData.balanceDue > 0
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-green-50 text-green-700 border-green-200'
+                }`}>
+                  <span>{savedReceiptData.balanceDue > 0 ? 'Balance Due (To Collect):' : 'Payment Status:'}</span>
+                  <span className="text-base">
+                    {savedReceiptData.balanceDue > 0
+                      ? `₹${savedReceiptData.balanceDue.toFixed(2)}`
+                      : 'PAID IN FULL'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <div className="text-center text-[11px] text-gray-500 border-t border-gray-100 pt-3">
+                Thank you for visiting! Please bring this receipt when collecting photos/albums.
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowReceipt(false);
+                  navigate('/transactions?type=sale');
+                }}
+              >
+                Close & Next
+              </Button>
+              <Button
+                leftIcon={<Printer size={16} />}
+                onClick={() => {
+                  window.print();
+                }}
+              >
+                Print Receipt
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

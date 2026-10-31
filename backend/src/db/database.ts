@@ -170,6 +170,40 @@ INSERT OR IGNORE INTO sequences VALUES ('proforma', 0);
 INSERT OR IGNORE INTO sequences VALUES ('delivery_challan', 0);
 INSERT OR IGNORE INTO sequences VALUES ('credit_note', 0);
 INSERT OR IGNORE INTO sequences VALUES ('debit_note', 0);
+
+-- Default Photo Studio Profile
+INSERT OR IGNORE INTO business_settings (id, name, gstin, address, phone, email, state_code)
+VALUES ('biz_1', 'Royal Photo Studio', '23AAAAA0000A1Z5', 'Shop No. 5, Near City Plaza, Main Road', '+91 98765 43210', 'info@royalphotostudio.com', '23');
+
+-- Default Photo Studio Categories
+INSERT OR IGNORE INTO item_categories (id, name) VALUES ('cat_1', 'Studio & Portrait Services');
+INSERT OR IGNORE INTO item_categories (id, name) VALUES ('cat_2', 'Event & Outdoor Shoots');
+INSERT OR IGNORE INTO item_categories (id, name) VALUES ('cat_3', 'Frames, Prints & Albums');
+
+-- Default Photo Studio Services & Products
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_1', 'Passport Size Photos (8 Pcs)', 'PASSPORT-8', 'cat_1', 'Pcs', 20, 100, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_2', 'Urgent Passport Photo (10 Min)', 'PASSPORT-URGENT', 'cat_1', 'Pcs', 30, 150, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_3', 'Studio Portrait / Profile Shoot', 'STUDIO-PORTRAIT', 'cat_1', 'Session', 100, 500, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_4', 'Pre-Wedding / Outdoor Shoot (Full Day)', 'PRE-WED-DAY', 'cat_2', 'Day', 3000, 15000, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_5', 'Wedding Photography & Videography Package', 'WED-PKG', 'cat_2', 'Event', 10000, 35000, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_6', 'Photo Framing (12x18 inch Laminated)', 'FRAME-12X18', 'cat_3', 'Pcs', 350, 850, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_7', 'Candid Birthday / Anniversary Shoot', 'EVENT-BIRTHDAY', 'cat_2', 'Event', 1200, 5000, 18, 999);
+
+INSERT OR IGNORE INTO items (id, name, sku, category_id, unit, purchase_price, sale_price, tax_rate, stock_qty)
+VALUES ('item_8', 'Canvera HD Glossy Album (30 Pages)', 'ALBUM-30P', 'cat_3', 'Pcs', 1800, 4500, 18, 999);
 `;
 
 export async function initDb(): Promise<void> {

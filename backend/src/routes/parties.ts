@@ -9,13 +9,22 @@ const router = Router();
 router.get('/', (req: Request, res: Response) => {
   try {
     const { type } = req.query;
-    let sql = `SELECT * FROM parties`;
+    let sql = `
+      SELECT 
+        p.*,
+        COALESCE(
+          (SELECT SUM(CASE WHEN t.type = 'sale' THEN t.balance_due ELSE -t.balance_due END) 
+           FROM transactions t WHERE t.party_id = p.id AND t.status != 'cancelled'), 
+          0
+        ) + COALESCE(p.opening_balance, 0) as balance
+      FROM parties p
+    `;
     const params: Params = {};
     if (type) {
-      sql += ` WHERE type = :type`;
+      sql += ` WHERE p.type = :type`;
       params[':type'] = type as string;
     }
-    sql += ` ORDER BY name ASC`;
+    sql += ` ORDER BY p.name ASC`;
     const parties = execQuery(sql, params);
     res.json({ success: true, data: parties });
   } catch (err: unknown) {
