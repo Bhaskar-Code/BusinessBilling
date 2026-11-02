@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Parties } from './pages/Parties';
 import { Inventory } from './pages/Inventory';
@@ -25,18 +27,24 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="parties" element={<Parties />} />
-            <Route path="inventory" element={<Inventory />} />
-            <Route path="sale" element={<SaleInvoice />} />
-            <Route path="purchase" element={<SaleInvoice />} />
-            <Route path="transactions" element={<Transactions />} />
-            <Route path="expenses" element={<Expenses />} />
-            <Route path="payments" element={<Payments />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Public Login Route */}
+          <Route path="/login" element={<Login />} />
+
+          {/* Protected Application Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="parties" element={<Parties />} />
+              <Route path="inventory" element={<Inventory />} />
+              <Route path="sale" element={<SaleInvoice />} />
+              <Route path="purchase" element={<SaleInvoice />} />
+              <Route path="transactions" element={<Transactions />} />
+              <Route path="expenses" element={<Expenses />} />
+              <Route path="payments" element={<Payments />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>

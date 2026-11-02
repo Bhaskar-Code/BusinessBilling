@@ -12,7 +12,6 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
-  Bell,
   Menu,
   X,
   FileText,
@@ -21,9 +20,10 @@ import {
   FileInput,
   ArrowDownCircle,
   ArrowUpCircle,
+  LogOut,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { useAppStore } from '../store/appStore';
+import { useAuthStore } from '../store/authStore';
 import { ToastContainer } from './ui/Toast';
 
 interface NavItem {
@@ -207,9 +207,15 @@ const SidebarItem: React.FC<{
 
 export const Layout: React.FC = () => {
   const location = useLocation();
-  const { businessSettings } = useAppStore();
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   const pageTitle =
     pageTitles[location.pathname] ||
@@ -338,23 +344,26 @@ export const Layout: React.FC = () => {
           </button>
           <h1 className="font-semibold text-gray-900 text-lg flex-1">{pageTitle}</h1>
           <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
             <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                <span className="text-white text-sm font-semibold">
-                  {(businessSettings?.business_name || 'B')[0].toUpperCase()}
-                </span>
+              <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                {(user?.username || 'A')[0].toUpperCase()}
               </div>
-              <div className="hidden sm:block">
-                <p className="text-sm font-medium text-gray-900 leading-none">
-                  {businessSettings?.business_name || 'My Business'}
+              <div className="hidden sm:block text-left">
+                <p className="text-sm font-semibold text-gray-900 leading-none">
+                  {user?.name || 'Studio Owner'}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">Admin</p>
+                <p className="text-xs text-gray-500 mt-0.5 capitalize">{user?.role || 'Admin'}</p>
               </div>
             </div>
+
+            <button
+              onClick={handleLogout}
+              title="Sign Out"
+              className="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+            >
+              <LogOut size={18} />
+              <span className="hidden md:inline">Sign Out</span>
+            </button>
           </div>
         </header>
 

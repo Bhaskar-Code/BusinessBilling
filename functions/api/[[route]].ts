@@ -144,6 +144,28 @@ export async function onRequest(context: any): Promise<Response> {
       return jsonResponse({ success: true, message: 'Vyapaar Cloudflare Pages API is running', timestamp: new Date().toISOString() });
     }
 
+    // AUTH LOGIN
+    if (segments[0] === 'auth' && segments[1] === 'login' && method === 'POST') {
+      const body = await request.json();
+      const u = (body.username || '').trim().toLowerCase();
+      const p = (body.password || '').trim();
+      if ((u === 'admin' || u === 'studio' || u === 'owner') && (p === 'admin' || p === 'admin123' || p === '123456' || p === 'studio123')) {
+        return jsonResponse({
+          success: true,
+          data: {
+            token: 'auth_' + Date.now(),
+            user: {
+              id: 'user_1',
+              username: u,
+              name: u === 'studio' ? 'Studio Manager' : 'Studio Owner (Admin)',
+              role: 'admin',
+            }
+          }
+        });
+      }
+      return jsonResponse({ success: false, error: 'Invalid username or password' }, 401);
+    }
+
     // 2. D1 STATUS
     if (segments[0] === 'd1' && segments[1] === 'status') {
       const tables = await queryAll(db, "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_cf_%'");

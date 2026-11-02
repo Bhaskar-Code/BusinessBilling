@@ -32,6 +32,28 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ success: true, message: 'Vyapaar API is running', timestamp: new Date().toISOString() });
 });
 
+// Auth Login
+app.post('/api/auth/login', (req: Request, res: Response) => {
+  const u = (req.body.username || '').trim().toLowerCase();
+  const p = (req.body.password || '').trim();
+  if ((u === 'admin' || u === 'studio' || u === 'owner') && (p === 'admin' || p === 'admin123' || p === '123456' || p === 'studio123')) {
+    res.json({
+      success: true,
+      data: {
+        token: 'auth_' + Date.now(),
+        user: {
+          id: 'user_1',
+          username: u,
+          name: u === 'studio' ? 'Studio Manager' : 'Studio Owner (Admin)',
+          role: 'admin',
+        }
+      }
+    });
+    return;
+  }
+  res.status(401).json({ success: false, error: 'Invalid username or password' });
+});
+
 // Cloudflare D1 Status
 app.get('/api/d1/status', async (_req: Request, res: Response) => {
   const configured = isD1Configured();
